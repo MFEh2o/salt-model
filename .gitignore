@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+
+rosm.cache/
+.DS_Store
+data/LakeATLAS_all
+data/USGSsalt/1992_2015
