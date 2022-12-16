@@ -2,6 +2,7 @@ library(sf)
 library(tidyverse)
 library(ggspatial)
 library(MetBrewer)
+library(stars)
 
 
 # The following code was used to subset LakeATLAS to CONUS
