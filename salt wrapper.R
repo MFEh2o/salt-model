@@ -85,7 +85,7 @@ dOut <- dOut %>%
 dOut$alphaFac <- factor(dOut$alpha,levels=sort(unique(dOut$alpha),decreasing=TRUE))
 
 #Open graphics device
-jpeg('Figure 2.jpg',width=6.66,height=4,units='in',res=300)
+jpeg('figures/Figure 2.jpg',width=6.66,height=4,units='in',res=300)
 
 #Plot
 ggplot(dOut) +
@@ -208,8 +208,8 @@ sOut <- sOut %>%
          CL2=SL2/V*1000,
          CL3=SL3/V*1000)
 
-#Open grapics device
-jpeg('Figure 1.jpg',width=4,height=4,units='in',res=300)
+#Open graphics device
+jpeg('figures/Figure 1.jpg',width=4,height=4,units='in',res=300)
 
 #Plot
 plot(CL3~year,data=sOut,type='l',lty=3,xlab='year',ylab=expression(Salt~concentration~'('*mg~Cl-~L^-1*')'))
