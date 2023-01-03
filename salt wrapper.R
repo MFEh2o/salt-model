@@ -210,6 +210,7 @@ ggplot(dOut) +
         legend.text=element_text(size=9),
         legend.title = element_text(size=10)) +
   scale_y_log10(minor_breaks=c(seq(2,9,1),seq(20,90,10),seq(200,900,100),seq(2000,9000,1000))) +
+  scale_x_continuous(labels=scales::number_format(accuracy = 0.001)) +
   scale_color_brewer(type='seq',palette='Reds')
 
 #Close device
