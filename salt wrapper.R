@@ -6,7 +6,7 @@ library(ggplot2)
 library(deSolve)
 
 source('dSalt.r')
-#source('dSaltForce.r')
+source('dSaltForce.r')
 
 
 #---- Model Application 1: Solve through time for a few scenarios ----
