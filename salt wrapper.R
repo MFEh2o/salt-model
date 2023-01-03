@@ -32,18 +32,7 @@ source('dSalt.r')
 alpha <- c(2.5,5,10,15,20,25)#c(0:12)
 
 #Road density, lane-m m-2
-#Dugan et al. 2017 PNAS (Fig. 3) suggests that range of road density in 500 m buffer
-#around the lakes they considered is from near-0 to maybe something like 20 km km-2.
-#This decreases at larger buffer sizes.
-#Heilman et al. 2002 BioScience (Table 2) indicates that range is 0.208 to 6.418 km km-2 
-#in Middle Atlantic Coastal Forest ecoregion. They used 1:100,000 scale roads data, and
-#excluded urban areas.
-#For now, use the Dugan values; should get more comprehensive data on how this varies
-#across U.S., including urban areas, and with mapping at relatively high resolution.
-#Convert Dugan range of 0 to 20 km km-2 to m m-2: 0 to 20*(1000/1e6)
-#Note that the Dugan numbers do not, I think, count lane-distance, so might need to multiply
-#by 2 or something like that to get in units used here. Haven't done that yet.
-#See also 'road density.r'. In that script I took US Census Bureau "TIGER/Line" data, plus
+#See 'road density.r'. In that script I took US Census Bureau "TIGER/Line" data, plus
 #some assumptions about average number of lanes for different road classes, and calculated
 #road density at the county level for a bunch of counties. Highest value in NY State is for
 #New York County (i.e. Manhattan), where density is 0.0310 lane-m m-2. That's presumably
@@ -51,14 +40,19 @@ alpha <- c(2.5,5,10,15,20,25)#c(0:12)
 #Densest counties that are not boroughs of the city are near suburbs, and are 0.014 to 0.015.
 #Lowest value in NY State is 0.0007 lane-m m-2 in Hamilton County (Adirondacks), which
 #apparently is the least densely populated county east of the Mississippi.
-delta <- seq(0,20,2)*(1000/1e6)
+#For comparison, Dugan et al. 2017 PNAS (Fig. 3) suggests that range of road density in
+#500 m buffer around the lakes they considered is from near-0 to maybe something like 20
+#km km-2. This decreases at larger buffer sizes. Convert to m m-2: 0 to 20*(1000/1e6) gives
+#0 to 0.020 m m-2. That does not (I think) account for multiple lanes, but seems like it is
+#in similar ballpark as the numbers I got from TIGER/Line.
+delta <- seq(0,30,2)*(1000/1e6)
 
 #Precipitation (net of evapotranspiration), m y-1
-#Values here are approximations for northern Montana, southeastern Michigan, and central
-#Connecticut, from eyeballing Fig. 2 and Fig. 14 of Sanford and Selnick 2013 JAWRA.
-#That paper plotted binned values of P and ET at county level; I took midpoints of bins
-#and rounded to nearest cm.
-p <- c(0.02,0.32,0.82)
+#From LakeATLAS data (see 'hydrolakeSalt.r'), take precipitation minus actual evapotranspiration.
+#Values range from <0.02 m to >2 m, but all the really high ones are in the Pacific Northwest.
+#Uaw 0.02, 0.25, 0.50 m y-1 to approximate typical dry, mesic, wet conditions - roughly
+#Montana,  Michigan, Connecticut.
+p <- c(0.05,0.25,0.50)
 
 
 ##
@@ -69,9 +63,9 @@ dOut <- expand.grid(alpha=alpha,delta=delta,p=p)
 
 #Add a column naming the levels of p as dry, mesic, wet
 dOut$precipRegime <- character(length=dim(dOut)[1])
-dOut$precipRegime[dOut$p==0.02] <- 'dry'
-dOut$precipRegime[dOut$p==0.32] <- 'mesic'
-dOut$precipRegime[dOut$p==0.82] <- 'wet'
+dOut$precipRegime[dOut$p==0.05] <- 'dry'
+dOut$precipRegime[dOut$p==0.25] <- 'mesic'
+dOut$precipRegime[dOut$p==0.50] <- 'wet'
 
 #Calculate equilibrium concentration of salt in lake (g m-3 = mg L-1)
 dOut <- dOut %>%
