@@ -139,6 +139,9 @@ arrange(dOut,roadDensity)
 #Re-name result so as not to write over it below
 dOutNY <- dOut
 
+#Histogram of road density in NY counties
+hist(dOutNY$roadDensity,main="",xlab=expression(Road~density~'('*lane*'-'*m~m^-2*')'))
+
 
 ##
 #Same, for Massachusetts
