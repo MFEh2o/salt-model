@@ -31,7 +31,7 @@ delta <- 0.010
 #Watershed area, m2 (note 1e6 m2 is 1 km2)
 A <- 1e6
 #Precipitation (net of evapotranspiration), m y-1
-p <- 0.32
+p <- 0.25
 #Lake volume, m3
 #Assume for now a 1 ha lake with mean depth 5 m
 V <- 50000
@@ -56,7 +56,7 @@ delta <- 0.010
 #Watershed area, m2 (note 1e6 m2 is 1 km2)
 A <- 1e6
 #Precipitation (net of evapotranspiration), m y-1
-p <- 0.32
+p <- 0.25
 #Lake volume, m3
 #Assume for now a 1 ha lake with mean depth 5 m
 V <- 50000
@@ -86,7 +86,7 @@ delta <- 0.010
 #Watershed area, m2 (note 1e6 m2 is 1 km2)
 A <- 1e6
 #Precipitation (net of evapotranspiration), m y-1
-p <- 0.32
+p <- 0.25
 #Lake volume, m3
 #Assume for now a 1 ha lake with mean depth 5 m
 V <- 50000
