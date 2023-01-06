@@ -13,8 +13,15 @@ source('dSaltForce.r')
 
 #---- Road density ----
 
-#Overview: loop across states in CONUS, and then across counties within each state.
-#For each county, calculate road density.
+#Overview: loop across states in CONUS, and then across ~county-level areas within each state.
+#Use the county-level FIPS code to identify areas. This is actually county in some states, but
+#some other administrative unit in other states (e.g. CT; see help for tigris::counties for
+#details).
+#For each ~county, calculate road density.
+#Use the 2020 data. Originally used 2022, but ran into a problem with CT (and perhaps other
+#states?) - COUNTYFP had been updated to reflect non-county units if you pulled data using 
+#counties(), but these COUNTYFP FIPS codes were not recognized as valid by roads(), which I
+#think expected the original county codes.
 
 #Roads to keep, including assumed number of lanes per road
 roadsToKeep <- data.frame(MTFCC=c('S1100','S1200','S1400','S1630','S1640','S1780'),nLanes=c(4,2,2,1,2,2))
@@ -40,17 +47,18 @@ for (s in 1:length(conusStates)) {
   #Identify which state to use
   state <- conusStates[s]
   
-  #Get list of counties for this state
-  dCounties <- counties(state=state,year=2022)
+  #Get set of ~counties for this state
+  dCounties <- counties(state=state,year=2020)
   
   #Loop over counties, pulling out data and doing calculation
   for (i in 1:dim(dCounties)[1]) {
     
     #Identify county
-    county <- dCounties$NAME[i]
+    countyFP <- dCounties$COUNTYFP[i]
+    countyName <- dCounties$NAME[i]
     
     #Get roads data for that county
-    dRoads <- roads(state=state,county=county,year=2022)
+    dRoads <- roads(state=state,county=countyFP,year=2020)
     
     #Merge dRoads with roadsToKeep to get dRoadsSub, including only roads that we want to keep and assumed number of lanes
     dRoadsSub <- inner_join(dRoads,roadsToKeep,by='MTFCC')
@@ -61,21 +69,66 @@ for (s in 1:length(conusStates)) {
     totalLaneMeters <- sum(dRoadsSub$laneMeters)
     
     #Calculate county area
-    countyArea <- st_area(filter(dCounties,NAME==county))
+    countyArea <- st_area(filter(dCounties,NAME==countyName))
     
     #Calculate road density, m m-2
     roadDensity <- totalLaneMeters/countyArea
     
     #Save result
-    dDensTemp <- data.frame(state=state,county=county,roadDensity=roadDensity)
+    dDensTemp <- data.frame(state=state,county=countyName,roadDensity=roadDensity)
     dDens <- rbind(dDens,dDensTemp)
     
   }
 }
 
+#Save the dDens object to permit skipping those (time-consuming) calculations in a subsequent session
+save(dDens,file='data outputs/dDens.RData')
+#If proceeding from previously saved file, skip the for loop and the line above and use:
+load('data outputs/dDens.RData')
+
 #Histogram of road density
 hist(dDens$roadDensity,main="",xlab=expression(Road~density~'('*lane*'-'*m~m^-2*')'))
 
+#Looks like a couple very high values. Check these out
+range(dDens$roadDensity)
+dDens[which(as.numeric(dDens$roadDensity)>0.5),]
+#I bet these are "independent cities" (see help for tigris::counties).
+#One check: do these county names show up more than once?
+filter(dDens,state=='VA',county=='Franklin')
+filter(dDens,state=='VA',county=='Fairfax')
+#Yes. Drop these two rows for simplicity.
+dDens <- filter(dDens,as.numeric(roadDensity)<0.5)
+#Histogram again
+hist(dDens$roadDensity,main="",xlab=expression(Road~density~'('*lane*'-'*m~m^-2*')'))
+#A few of remaining values still look unreasonably high, given that Manhattan (New York
+#County, NY) is around 0.03.
+dDens[which(as.numeric(dDens$roadDensity)>0.03),]
+#I bet all of these places with values in excess of New York County are also "independent
+#cities". Drop.
+dDens <- filter(dDens,as.numeric(roadDensity)<0.031)
+#Probably still some independent cities and other geographic oddities in the data set,
+#but at least now the top end of the distribution is probably a fairly realistic top end
+#for road density at county level. Proceed.
+
+#Histogram again
+hist(dDens$roadDensity,main="",xlab=expression(Road~density~'('*lane*'-'*m~m^-2*')'))
+
+#Tidier version of figure - this is Fig. 2D
+
+#Open graphics device
+jpeg('figures/Figure 2D.jpg',width=4,height=4,units='in',res=300)
+
+#Plot
+ggplot(dDens) +
+  geom_histogram(mapping=aes(x=as.numeric(roadDensity))) +
+  scale_x_log10(breaks=c(0.00010,0.001,0.01),
+                minor_breaks=c(seq(0.0002,0.0009,0.0001),seq(0.002,0.009,0.001),0.02,0.03),
+                labels=scales::number_format(accuracy = 0.0001)) +
+  labs(x=expression(Road~density~'('*'lane-m'~m^-2*')'),y='Number of counties') +
+  theme_bw()
+
+#Close device
+dev.off()
 
 
 #---- Model Application 1: Solve through time for a few scenarios ----
