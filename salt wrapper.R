@@ -197,7 +197,7 @@ dOut$alphaFac <- factor(dOut$alpha,levels=sort(unique(dOut$alpha),decreasing=TRU
 jpeg('figures/Figure 2.jpg',width=6.66,height=4,units='in',res=300)
 
 #Plot
-ggplot(dOut) +
+ggplot(filter(dOut,delta>0)) +
   geom_line(mapping=aes(x=delta,y=CL,group=alphaFac,color=alphaFac)) +
   facet_grid(cols=vars(precipRegime)) +
   labs(x=expression(Road~density~'('*'lane-m'~m^-2*')'),
@@ -210,7 +210,7 @@ ggplot(dOut) +
         legend.text=element_text(size=9),
         legend.title = element_text(size=10)) +
   scale_y_log10(minor_breaks=c(seq(2,9,1),seq(20,90,10),seq(200,900,100),seq(2000,9000,1000))) +
-  scale_x_continuous(labels=scales::number_format(accuracy = 0.001)) +
+  scale_x_log10(labels=scales::number_format(accuracy = 0.001)) +
   scale_color_brewer(type='seq',palette='Reds')
 
 #Close device
