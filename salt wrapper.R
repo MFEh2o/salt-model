@@ -4,9 +4,78 @@
 library(dplyr)
 library(ggplot2)
 library(deSolve)
+library(tigris)
+library(sf)
 
 source('dSalt.r')
 source('dSaltForce.r')
+
+
+#---- Road density ----
+
+#Overview: loop across states in CONUS, and then across counties within each state.
+#For each county, calculate road density.
+
+#Roads to keep, including assumed number of lanes per road
+roadsToKeep <- data.frame(MTFCC=c('S1100','S1200','S1400','S1630','S1640','S1780'),nLanes=c(4,2,2,1,2,2))
+#Use only the following types of road:
+# - S1100 Primary roads
+# - S1200 Secondary roads
+# - S1400 Local neighborhood roads, rural roads, city streets
+# - S1500 Vehicular trail (4WD) <actually, drop this one too - presumably little salt application>
+# - S1630 Ramp
+# - S1640 Service drive
+# - S1780 Parking lot road
+#And assume that average number of lanes for each of these road types is 4,2,2,1,2,2.
+
+#List of all states in CONUS
+conusStates <- state.abb[-which(state.abb%in%c('AK','HI'))]
+
+#Set up output
+dDens <- data.frame(state=character(0),county=character(0),roadDensity=numeric(0))
+
+#Loop over states
+for (s in 1:length(conusStates)) {
+  
+  #Identify which state to use
+  state <- conusStates[s]
+  
+  #Get list of counties for this state
+  dCounties <- counties(state=state,year=2022)
+  
+  #Loop over counties, pulling out data and doing calculation
+  for (i in 1:dim(dCounties)[1]) {
+    
+    #Identify county
+    county <- dCounties$NAME[i]
+    
+    #Get roads data for that county
+    dRoads <- roads(state=state,county=county,year=2022)
+    
+    #Merge dRoads with roadsToKeep to get dRoadsSub, including only roads that we want to keep and assumed number of lanes
+    dRoadsSub <- inner_join(dRoads,roadsToKeep,by='MTFCC')
+    
+    #Calculate total lane-meters of road in county
+    dRoadsSub$roadLength <- st_length(dRoadsSub)
+    dRoadsSub$laneMeters <- dRoadsSub$nLanes*dRoadsSub$roadLength
+    totalLaneMeters <- sum(dRoadsSub$laneMeters)
+    
+    #Calculate county area
+    countyArea <- st_area(filter(dCounties,NAME==county))
+    
+    #Calculate road density, m m-2
+    roadDensity <- totalLaneMeters/countyArea
+    
+    #Save result
+    dDensTemp <- data.frame(state=state,county=county,roadDensity=roadDensity)
+    dDens <- rbind(dDens,dDensTemp)
+    
+  }
+}
+
+#Histogram of road density
+hist(dDens$roadDensity,main="",xlab=expression(Road~density~'('*lane*'-'*m~m^-2*')'))
+
 
 
 #---- Model Application 1: Solve through time for a few scenarios ----
