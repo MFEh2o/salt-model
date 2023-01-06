@@ -269,20 +269,14 @@ dev.off()
 alpha <- c(2.5,5,10,15,20,25)#c(0:12)
 
 #Road density, lane-m m-2
-#See 'road density.r'. In that script I took US Census Bureau "TIGER/Line" data, plus
-#some assumptions about average number of lanes for different road classes, and calculated
-#road density at the county level for a bunch of counties. Highest value in NY State is for
-#New York County (i.e. Manhattan), where density is 0.0310 lane-m m-2. That's presumably
-#about as high as road density gets anywhere. Other boroughs of NYC are 0.014 to 0.027.
-#Densest counties that are not boroughs of the city are near suburbs, and are 0.014 to 0.015.
-#Lowest value in NY State is 0.0007 lane-m m-2 in Hamilton County (Adirondacks), which
-#apparently is the least densely populated county east of the Mississippi.
+#See section on road density above. County-level road density in CONUS ranges from a little
+#over 0.0001 to 0.0310 lane-m m-2, with most values in the range of ~0.002 to 0.008.
+#Set up a series of values covering this range.
 #For comparison, Dugan et al. 2017 PNAS (Fig. 3) suggests that range of road density in
 #500 m buffer around the lakes they considered is from near-0 to maybe something like 20
 #km km-2. This decreases at larger buffer sizes. Convert to m m-2: 0 to 20*(1000/1e6) gives
-#0 to 0.020 m m-2. That does not (I think) account for multiple lanes, but seems like it is
-#in similar ballpark as the numbers I got from TIGER/Line.
-delta <- seq(0,30,2)*(1000/1e6)
+#0 to 0.020 m m-2. That does not (I think) account for multiple lanes.
+delta <- c(0.0001,0.0003,0.0010,0.0030,0.0100,0.0300)
 
 #Precipitation (net of evapotranspiration), m y-1
 #From LakeATLAS data (see 'hydrolakeSalt.r'), take precipitation minus actual evapotranspiration.
