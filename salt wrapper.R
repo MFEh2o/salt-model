@@ -3,6 +3,7 @@
 
 library(dplyr)
 library(ggplot2)
+library(gridExtra)
 library(deSolve)
 library(tigris)
 library(sf)
@@ -113,22 +114,15 @@ dDens <- filter(dDens,as.numeric(roadDensity)<0.031)
 #Histogram again
 hist(dDens$roadDensity,main="",xlab=expression(Road~density~'('*lane*'-'*m~m^-2*')'))
 
-#Tidier version of figure - this is Fig. 2D
-
-#Open graphics device
-jpeg('figures/Figure 2D.jpg',width=4,height=4,units='in',res=300)
-
-#Plot
-ggplot(dDens) +
+#Tidier version of figure - used later in creating Fig. 2
+g1 <- ggplot(dDens) +
   geom_histogram(mapping=aes(x=as.numeric(roadDensity))) +
   scale_x_log10(breaks=c(0.00010,0.001,0.01),
                 minor_breaks=c(seq(0.0002,0.0009,0.0001),seq(0.002,0.009,0.001),0.02,0.03),
                 labels=scales::number_format(accuracy = 0.0001)) +
   labs(x=expression(Road~density~'('*'lane-m'~m^-2*')'),y='Number of counties') +
   theme_bw()
-
-#Close device
-dev.off()
+g1
 
 
 #---- Model Application 1: Solve through time for a few scenarios ----
@@ -309,11 +303,8 @@ dOut <- dOut %>%
 #for convenience in plotting
 dOut$alphaFac <- factor(dOut$alpha,levels=sort(unique(dOut$alpha),decreasing=TRUE))
 
-#Open graphics device
-jpeg('figures/Figure 2.jpg',width=6.66,height=4,units='in',res=300)
-
-#Plot
-ggplot(filter(dOut,delta>0)) +
+#Create plot
+g2 <- ggplot(filter(dOut,delta>0)) +
   geom_line(mapping=aes(x=delta,y=CL,group=alphaFac,color=alphaFac)) +
   facet_grid(cols=vars(precipRegime)) +
   labs(x=expression(Road~density~'('*'lane-m'~m^-2*')'),
@@ -325,9 +316,18 @@ ggplot(filter(dOut,delta>0)) +
         legend.key.size=unit(0.75,'lines'),
         legend.text=element_text(size=9),
         legend.title = element_text(size=10)) +
-  scale_y_log10(minor_breaks=c(seq(2,9,1),seq(20,90,10),seq(200,900,100),seq(2000,9000,1000))) +
-  scale_x_log10(labels=scales::number_format(accuracy = 0.001)) +
+  scale_y_log10(minor_breaks=c(seq(0.3,0.9,0.1),seq(2,9,1),seq(20,90,10),seq(200,900,100),seq(2000,9000,1000))) +
+  scale_x_log10(labels=scales::number_format(accuracy = 0.0001)) +
   scale_color_brewer(type='seq',palette='Reds')
+
+#Check plot
+g2
+
+#Open graphics device
+jpeg('figures/Figure 2.jpg',width=8.88,height=4,units='in',res=300)
+
+#Put g2 and g1 on same figure
+grid.arrange(g2,g1,nrow=1,widths=c(3,1))
 
 #Close device
 dev.off()
