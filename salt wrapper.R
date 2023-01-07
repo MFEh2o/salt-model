@@ -39,52 +39,60 @@ roadsToKeep <- data.frame(MTFCC=c('S1100','S1200','S1400','S1630','S1640','S1780
 #List of all states in CONUS
 conusStates <- state.abb[-which(state.abb%in%c('AK','HI'))]
 
-#Set up output
-dDens <- data.frame(state=character(0),county=character(0),roadDensity=numeric(0))
 
-#Loop over states
-for (s in 1:length(conusStates)) {
-  
-  #Identify which state to use
-  state <- conusStates[s]
-  
-  #Get set of ~counties for this state
-  dCounties <- counties(state=state,year=2020)
-  
-  #Loop over counties, pulling out data and doing calculation
-  for (i in 1:dim(dCounties)[1]) {
-    
-    #Identify county
-    countyFP <- dCounties$COUNTYFP[i]
-    countyName <- dCounties$NAME[i]
-    
-    #Get roads data for that county
-    dRoads <- roads(state=state,county=countyFP,year=2020)
-    
-    #Merge dRoads with roadsToKeep to get dRoadsSub, including only roads that we want to keep and assumed number of lanes
-    dRoadsSub <- inner_join(dRoads,roadsToKeep,by='MTFCC')
-    
-    #Calculate total lane-meters of road in county
-    dRoadsSub$roadLength <- st_length(dRoadsSub)
-    dRoadsSub$laneMeters <- dRoadsSub$nLanes*dRoadsSub$roadLength
-    totalLaneMeters <- sum(dRoadsSub$laneMeters)
-    
-    #Calculate county area
-    countyArea <- st_area(filter(dCounties,NAME==countyName))
-    
-    #Calculate road density, m m-2
-    roadDensity <- totalLaneMeters/countyArea
-    
-    #Save result
-    dDensTemp <- data.frame(state=state,county=countyName,roadDensity=roadDensity)
-    dDens <- rbind(dDens,dDensTemp)
-    
-  }
-}
+##
+#Code commented out over next ~45 lines does the calculation of road density for each
+#county in CONUS. Last line commented out save the resulting "dDens" data.frame. If running
+#this code for first time (or after a change), uncomment and re-save dDens. Otherwise, can
+#just load the saved dDens object.
 
-#Save the dDens object to permit skipping those (time-consuming) calculations in a subsequent session
-save(dDens,file='data outputs/dDens.RData')
-#If proceeding from previously saved file, skip the for loop and the line above and use:
+# #Set up output
+# dDens <- data.frame(state=character(0),county=character(0),roadDensity=numeric(0))
+# 
+# #Loop over states
+# for (s in 1:length(conusStates)) {
+#   
+#   #Identify which state to use
+#   state <- conusStates[s]
+#   
+#   #Get set of ~counties for this state
+#   dCounties <- counties(state=state,year=2020)
+#   
+#   #Loop over counties, pulling out data and doing calculation
+#   for (i in 1:dim(dCounties)[1]) {
+#     
+#     #Identify county
+#     countyFP <- dCounties$COUNTYFP[i]
+#     countyName <- dCounties$NAME[i]
+#     
+#     #Get roads data for that county
+#     dRoads <- roads(state=state,county=countyFP,year=2020)
+#     
+#     #Merge dRoads with roadsToKeep to get dRoadsSub, including only roads that we want to keep and assumed number of lanes
+#     dRoadsSub <- inner_join(dRoads,roadsToKeep,by='MTFCC')
+#     
+#     #Calculate total lane-meters of road in county
+#     dRoadsSub$roadLength <- st_length(dRoadsSub)
+#     dRoadsSub$laneMeters <- dRoadsSub$nLanes*dRoadsSub$roadLength
+#     totalLaneMeters <- sum(dRoadsSub$laneMeters)
+#     
+#     #Calculate county area
+#     countyArea <- st_area(filter(dCounties,NAME==countyName))
+#     
+#     #Calculate road density, m m-2
+#     roadDensity <- totalLaneMeters/countyArea
+#     
+#     #Save result
+#     dDensTemp <- data.frame(state=state,county=countyName,roadDensity=roadDensity)
+#     dDens <- rbind(dDens,dDensTemp)
+#     
+#   }
+# }
+# 
+# #Save the dDens object to permit skipping those (time-consuming) calculations in a subsequent session
+# save(dDens,file='data outputs/dDens.RData')
+
+#If proceeding from previously saved file, skip the for-loop above and use:
 load('data outputs/dDens.RData')
 
 #Histogram of road density
