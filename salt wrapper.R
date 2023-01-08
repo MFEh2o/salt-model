@@ -414,7 +414,7 @@ ggplot(b) +
   xlab("Equlibrium salt concentration"~(mg~Cl^"-"~L^-1)) +
   theme_bw(base_size = 9) 
 
-## Esri basemap URLs ####
+# Esri basemap URLs
 world_gray <-  paste0('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
 
 ggplot() +
