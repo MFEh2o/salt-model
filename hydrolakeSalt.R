@@ -3,7 +3,8 @@ library(tidyverse)
 library(ggspatial)
 library(MetBrewer)
 library(stars)
-
+library(patchwork)
+library(USAboundaries)
 
 # The following code was used to subset LakeATLAS to CONUS
 # hydrolakes.pt = st_read('~/Downloads/LakeATLAS_Data_v10_shp/LakeATLAS_v10_shp/LakeATLAS_v10_pnt_west.shp')
@@ -66,10 +67,11 @@ b <- b %>%
   mutate(CL = salt_kg_m2/p*1000) |> 
   mutate(CL.group = fct_case_when(CL < 10 ~ '0-10',
                               CL < 50 ~ '10-50',
-                              CL < 100 ~ '50-100',
-                              CL < 300 ~ '100-300',
-                              CL < 500 ~ '300-500',
-                              CL >= 500 ~ '500+')) 
+                              CL < 120 ~ '50-120',
+                              CL < 230 ~ '120-230',
+                              CL < 500 ~ '230-500',
+                              CL >= 500 ~ '500+')) |> 
+  filter(!is.na(CL))
 
 # Plots histogram 
 ggplot(b) +
@@ -78,21 +80,78 @@ ggplot(b) +
   xlab("Equlibrium salt concentration"~(mg~Cl^"-"~L^-1)) +
   theme_bw(base_size = 9) 
 
+# What state are all the points in? 
+states_sf <- st_transform(us_states(map_date = NULL, resolution = c("low", "high"), states = NULL), 4326) |> 
+  select(name, state_name, state_abbr)
+b.state <- as.data.frame(st_join(b, states_sf, join = st_intersects))
+b.state.sf <- st_join(b, states_sf, join = st_intersects)
+
+
 ############# ############## MAPPING ############## ##############
 ## Esri basemap URLs ####
 world_gray <-  paste0('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
 
-ggplot() +
+m1 = ggplot() +
   annotation_map_tile(type = world_gray, zoom = 5) + # Esri Basemap
   geom_sf(data = b, aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
   scale_fill_manual(values = rev(met.brewer("Peru1", 6)), name = 'Cl (mg/L)') +
-  # scale_fill_gradientn(colors = rev(met.brewer("Peru1"))) +
-  # scale_color_gradientn(colors = rev(met.brewer("Peru1"))) +
-  theme_bw(base_size = 9)
+  theme_bw(base_size = 9) +
+  theme(legend.position = c(0.9,0.2),
+        legend.background = element_blank(),
+        # legend.box.background = element_blank(),
+        legend.key = element_blank(),
+        legend.key.height = unit(0.1,'cm'))
 
-ggsave('figures/saltLakes.png', height = 4, width = 6, dpi = 500)  
+m2 = ggplot() +
+  annotation_map_tile(type = world_gray, zoom = 10) + # Esri Basemap
+  geom_sf(data =b.state.sf %>% filter(state_abbr == 'CT'), aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
+  scale_fill_manual(values = rev(met.brewer("Peru1", 6)), name = 'Cl (mg/L)') +
+  theme_bw(base_size = 9) +
+  theme(legend.position = 'none',
+        legend.background = element_blank(),
+        # legend.box.background = element_blank(),
+        legend.key = element_blank(),
+        legend.key.height = unit(0.1,'cm'))
+
+# ggsave('figures/saltLakes.png', height = 4, width = 6, dpi = 500)  
+
+############# ############## State # ############## ##############
+
+b.state.sum = b.state |> 
+  filter(!is.na(CL)) |> 
+  mutate(cl230 = if_else(CL >= 230, TRUE, FALSE)) |> 
+  mutate(cl120 = if_else(CL >= 120, TRUE, FALSE)) |> 
+  group_by(state_name, state_abbr) |> 
+  summarise(cl.230 = sum(cl230), cl.120 = sum(cl120)) |> 
+  # mutate(cl.230.per = cl.230/n) |> 
+  filter(!is.na(state_name)) |> 
+  filter(cl.120 >= 20) |> # filter to states with more than 20 lakes
+  pivot_longer(cols = cl.230:cl.120) |> 
+  arrange(name)
 
 
+p1 = ggplot(b.state.sum) +
+  geom_col(aes(x= state_name, y = value, fill = name), width = 0.8, position = 'identity') +
+  ylab("No. lakes > chloride threshold") +
+  scale_fill_manual(values = c('#e35e28', '#1c9d7c'), 
+                    labels = c('120 mg/L','230 mg/L'), name = 'Threshold') +
+  theme_bw(base_size = 9) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        axis.title.x = element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        legend.key.size = unit(0.3,'cm'),
+        legend.position = c(0.8,0.8))
+
+############# ############## Join Figures ############## ##############
+plotjoin = m1/ (m2 + p1) +
+  plot_layout(heights = c(1.5,1)) +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') & 
+  theme(plot.tag = element_text(size  = 8))
+ggsave(plot = plotjoin, filename = 'figures/Figure3.png', width = 6, height = 6, dpi = 500, bg = 'white') 
+
+
+############# ############## Map salt use ############## ##############
 #Plot salt use, does it makes sense?
 test <- b %>%
   mutate(salt_kg_m2.group = case_when(salt_kg_m2 < 0.005 ~ '0-0.005',
@@ -102,9 +161,9 @@ test <- b %>%
                                       salt_kg_m2 < 0.05 ~ '0.03-0.05',
                                       salt_kg_m2 >= 0.05 ~ '0.05+'))
 
-ggplot() +
-  annotation_map_tile(type = world_gray, zoom = 5) + # Esri Basemap
-  geom_sf(data = test, aes(fill = salt_kg_m2.group), size = 1, stroke = 0.2, shape = 21) +
-  scale_fill_manual(values = rev(met.brewer("Peru1", 6)), name = 'Salt (kg/m2)') +
-  theme_bw(base_size = 9)
-ggsave('figures/USGSsalt2015.png', width = 6, height = 4, dpi = 500)
+# ggplot() +
+#   annotation_map_tile(type = world_gray, zoom = 5) + # Esri Basemap
+#   geom_sf(data = test, aes(fill = salt_kg_m2.group), size = 1, stroke = 0.2, shape = 21) +
+#   scale_fill_manual(values = rev(met.brewer("Peru1", 6)), name = 'Salt (kg/m2)') +
+#   theme_bw(base_size = 9)
+# ggsave('figures/USGSsalt2015.png', width = 6, height = 4, dpi = 500)
