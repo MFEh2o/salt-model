@@ -6,6 +6,8 @@ library(stars)
 library(patchwork)
 library(USAboundaries)
 
+source('hydrolakeSalt_midwest.R')
+
 # The following code was used to subset LakeATLAS to CONUS
 # hydrolakes.pt = st_read('~/Downloads/LakeATLAS_Data_v10_shp/LakeATLAS_v10_shp/LakeATLAS_v10_pnt_west.shp')
 # 
@@ -141,11 +143,24 @@ p1 = ggplot(b.state.sum) +
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(), 
         legend.key.size = unit(0.3,'cm'),
-        legend.position = c(0.8,0.8))
+        legend.position = c(0.75,0.8))
 
 ############# ############## Join Figures ############## ##############
-plotjoin = m1/ (m2 + p1) +
-  plot_layout(heights = c(1.5,1)) +
+layout <- '
+AAA
+AAA
+AAA
+BBC
+BBC
+'
+
+layout <- c(
+area(t = 1, l = 1, b = 3, r = 6),
+area(t = 4, l = 1, b = 5, r = 2),
+area(t = 4, l = 3, b = 5, r = 6))
+
+plotjoin = m1 + p1 + m1.midwest +
+  plot_layout(design = layout) +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') & 
   theme(plot.tag = element_text(size  = 8))
 ggsave(plot = plotjoin, filename = 'figures/Figure3.png', width = 6, height = 6, dpi = 500, bg = 'white') 
@@ -153,13 +168,15 @@ ggsave(plot = plotjoin, filename = 'figures/Figure3.png', width = 6, height = 6,
 
 ############# ############## Map salt use ############## ##############
 #Plot salt use, does it makes sense?
-test <- b %>%
+test <- b.state.sf %>%
   mutate(salt_kg_m2.group = case_when(salt_kg_m2 < 0.005 ~ '0-0.005',
                                       salt_kg_m2 < 0.01 ~ '0.005-0.01',
                                       salt_kg_m2 < 0.02 ~ '0.01-0.02',
                                       salt_kg_m2 < 0.03 ~ '0.02-0.03',
                                       salt_kg_m2 < 0.05 ~ '0.03-0.05',
                                       salt_kg_m2 >= 0.05 ~ '0.05+'))
+
+test |> group_by(state_abbr) |> summarise(saltuse = mean(salt_kg_m2)) |> arrange(desc(saltuse))
 
 # ggplot() +
 #   annotation_map_tile(type = world_gray, zoom = 5) + # Esri Basemap
