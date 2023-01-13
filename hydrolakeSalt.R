@@ -36,15 +36,18 @@ a.project = hydrolakes.us |>
   st_transform(st_crs(r))
 # Extract raster data
 usgsExtract = st_extract(r, a.project) |> 
-  mutate(salt_kg_m2 = `2015.tif` * 0.453592 / 1e6)
+  mutate(salt_kg_m2 = `2015.tif` * 0.453592 / 1e6) # conversion from pounds per km2 to kg per m2
+
 
 # Convert units and add salt 
 b = hydrolakes.us |>
   mutate(salt_kg_m2 = usgsExtract$salt_kg_m2) |> 
+  mutate(cl_kg_m2 = salt_kg_m2* 0.6067) |> 
   mutate(delta = rdd_mk_uav/1e6) |> # convert to meters per m2
   mutate(p = (pre_mm_uyr - aet_mm_uyr)/1000) #Precipitation (net of evapotranspiration), m y-1
 
 # Check ranges
+range(b$salt_kg_m2)
 range(b$delta)
 range(b$p)
 
@@ -66,7 +69,7 @@ fct_case_when <- function(...) {
 # Group by CL concentration
 b <- b %>%
   # mutate(CL = 10*delta/p*1000) |> 
-  mutate(CL = salt_kg_m2/p*1000) |> 
+  mutate(CL = cl_kg_m2/p*1000) |> 
   mutate(CL.group = fct_case_when(CL < 10 ~ '0-10',
                               CL < 50 ~ '10-50',
                               CL < 120 ~ '50-120',
@@ -87,8 +90,16 @@ states_sf <- st_transform(us_states(map_date = NULL, resolution = c("low", "high
   select(name, state_name, state_abbr)
 b.state <- as.data.frame(st_join(b, states_sf, join = st_intersects))
 b.state.sf <- st_join(b, states_sf, join = st_intersects)
-
 # st_write(b.state.sf, dsn = 'data/saltModeloutput.GeoJSON')
+
+# Check on state total salt use
+wi = st_union(states_sf |> filter(name == 'Wisconsin') |> st_transform(st_crs(r)))
+wiTotalsalt = st_crop(r, wi)
+# Extract average value per polygon
+aggregate(r, wi, mean, na.rm=TRUE)
+
+
+
 ############# ############## MAPPING ############## ##############
 ## Esri basemap URLs ####
 world_gray <-  paste0('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
@@ -152,7 +163,7 @@ p1 = ggplot(b.state.sum) +
   geom_text(data = b.state.sum |> filter(name == 'cl.230'), 
             aes(x= state_name, y = value, label=prop.230), vjust= -0.5, size = 2) +
   ylab("No. lakes > chloride threshold") +
-  ylim(0,1300) + 
+  ylim(0,500) + 
   scale_fill_manual(values = c('#e35e28', '#1c9d7c'), 
                     labels = c('120 mg/L','230 mg/L'), name = 'Threshold') +
   theme_bw(base_size = 9) +
