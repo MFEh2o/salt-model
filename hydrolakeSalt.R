@@ -88,7 +88,7 @@ states_sf <- st_transform(us_states(map_date = NULL, resolution = c("low", "high
 b.state <- as.data.frame(st_join(b, states_sf, join = st_intersects))
 b.state.sf <- st_join(b, states_sf, join = st_intersects)
 
-
+# st_write(b.state.sf, dsn = 'data/saltModeloutput.GeoJSON')
 ############# ############## MAPPING ############## ##############
 ## Esri basemap URLs ####
 world_gray <-  paste0('https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/${z}/${y}/${x}.jpeg')
@@ -96,19 +96,29 @@ world_gray <-  paste0('https://services.arcgisonline.com/arcgis/rest/services/Ca
 m1 = ggplot() +
   annotation_map_tile(type = world_gray, zoom = 5) + # Esri Basemap
   geom_sf(data = b, aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
-  scale_fill_manual(values = rev(met.brewer("Peru1", 6)), name = 'Cl (mg/L)') +
+  scale_fill_manual(values = rev(met.brewer("Peru1", 6)), 
+                    name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-")))) +
+  # coord_sf(label_graticule = "-NE") +
   theme_bw(base_size = 9) +
-  theme(legend.position = c(0.9,0.2),
+  theme(axis.title = element_blank(),
+        legend.position = c(0.9,0.2),
         legend.background = element_blank(),
         # legend.box.background = element_blank(),
+        legend.title = element_text(size = 7),
         legend.key = element_blank(),
         legend.key.height = unit(0.1,'cm'))
+m1
+
+
 
 m2 = ggplot() +
-  annotation_map_tile(type = world_gray, zoom = 10) + # Esri Basemap
-  geom_sf(data =b.state.sf %>% filter(state_abbr == 'CT'), aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
-  scale_fill_manual(values = rev(met.brewer("Peru1", 6)), name = 'Cl (mg/L)') +
+  annotation_map_tile(type = world_gray, zoom = 8) + # Esri Basemap
+  geom_sf(data = b, aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
+  scale_fill_manual(values = rev(met.brewer("Peru1", 6)), 
+                    name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-")))) +
   theme_bw(base_size = 9) +
+  coord_sf(crs = 4326, ylim = c(41.5,46), xlim = c(-89, -82)) +
+  scale_x_continuous(breaks = seq(-88, -82, by = 2)) +
   theme(legend.position = 'none',
         legend.background = element_blank(),
         # legend.box.background = element_blank(),
@@ -124,17 +134,25 @@ b.state.sum = b.state |>
   mutate(cl230 = if_else(CL >= 230, TRUE, FALSE)) |> 
   mutate(cl120 = if_else(CL >= 120, TRUE, FALSE)) |> 
   group_by(state_name, state_abbr) |> 
-  summarise(cl.230 = sum(cl230), cl.120 = sum(cl120)) |> 
+  mutate(n = n()) |> 
+  summarise(cl.230 = sum(cl230), cl.120 = sum(cl120), n = first(n)) |> 
+  mutate(prop.120 = round(cl.120/n,2), prop.230 = round(cl.230/n,2)) |> 
   # mutate(cl.230.per = cl.230/n) |> 
   filter(!is.na(state_name)) |> 
   filter(cl.120 >= 20) |> # filter to states with more than 20 lakes
   pivot_longer(cols = cl.230:cl.120) |> 
-  arrange(name)
+  arrange(desc(prop.230), name) |> 
+  mutate(state_name = factor(state_name, levels = unique(b.state.sum$state_name)))
 
 
 p1 = ggplot(b.state.sum) +
   geom_col(aes(x= state_name, y = value, fill = name), width = 0.8, position = 'identity') +
+  geom_text(data = b.state.sum |> filter(name == 'cl.120'), 
+            aes(x= state_name, y = value, label=prop.120), vjust= -0.5, size = 2) +
+  geom_text(data = b.state.sum |> filter(name == 'cl.230'), 
+            aes(x= state_name, y = value, label=prop.230), vjust= -0.5, size = 2) +
   ylab("No. lakes > chloride threshold") +
+  ylim(0,1300) + 
   scale_fill_manual(values = c('#e35e28', '#1c9d7c'), 
                     labels = c('120 mg/L','230 mg/L'), name = 'Threshold') +
   theme_bw(base_size = 9) +
@@ -143,27 +161,27 @@ p1 = ggplot(b.state.sum) +
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(), 
         legend.key.size = unit(0.3,'cm'),
-        legend.position = c(0.75,0.8))
+        legend.position = c(0.85,0.8))
 
 ############# ############## Join Figures ############## ##############
 layout <- '
-AAA
-AAA
-AAA
-BBC
-BBC
+AA
+AA
+BC
 '
 
-layout <- c(
-area(t = 1, l = 1, b = 3, r = 6),
-area(t = 4, l = 1, b = 5, r = 2),
-area(t = 4, l = 3, b = 5, r = 6))
+# layout <- c(
+# area(t = 1, l = 1, b = 3, r = 6),
+# area(t = 4, l = 1, b = 5, r = 2),
+# area(t = 4, l = 3, b = 5, r = 6))
 
-plotjoin = m1 + p1 + m1.midwest +
+plotjoin = m1 + p1 + m2 +
   plot_layout(design = layout) +
-  plot_annotation(tag_levels = 'a', tag_suffix = ')') & 
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
   theme(plot.tag = element_text(size  = 8))
-ggsave(plot = plotjoin, filename = 'figures/Figure3.png', width = 6, height = 6, dpi = 500, bg = 'white') 
+ggsave(plot = plotjoin, filename = 'figures/Figure3.png', 
+       width = 6, height = 6, dpi = 500, bg = 'white')
+
 
 
 ############# ############## Map salt use ############## ##############
