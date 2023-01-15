@@ -6,55 +6,75 @@ library(stars)
 library(patchwork)
 library(USAboundaries)
 
-source('hydrolakeSalt_midwest.R')
-
 # The following code was used to subset LakeATLAS to CONUS
-# hydrolakes.pt = st_read('~/Downloads/LakeATLAS_Data_v10_shp/LakeATLAS_v10_shp/LakeATLAS_v10_pnt_west.shp')
+# hydrolakes.pt = st_read('data/LakeATLAS_all/LakeATLAS_Data_v10_shp/LakeATLAS_v10_shp/LakeATLAS_v10_pnt_west.shp')
 # 
-# hydrolakes.us = hydrolakes.pt |>
+# hydrolakes.us = hydrolakes.pt %>%
 #   filter(Country == 'United States of America') %>%
 #   dplyr::mutate(lon = sf::st_coordinates(.)[,1],
 #                 lat = sf::st_coordinates(.)[,2]) |>
-#   filter(lat < 50, lon > -150, lat > 22) |> 
-#   dplyr::select(Hylak_id:Wshd_area,starts_with("rdd"), starts_with("pre_mm_u"), starts_with("aet_mm_u"), 
-#          starts_with("pet_mm_u"), starts_with("urb"))
+#   filter(lat < 50, lon > -150, lat > 22) |>
+#   dplyr::select(Hylak_id:Wshd_area,starts_with("rdd"), starts_with("pre_mm_u"), starts_with("aet_mm_u"),
+#          starts_with("pet_mm_u"), starts_with("urb"), 'HYBAS_L12')
 # 
-# st_write(hydrolakes.us, 'data/LakeATLAS_CONUS.shp', delete_dsn = TRUE)
+# st_write(hydrolakes.us, 'data/LakeATLAS_all/LakeATLAS_CONUS.shp', delete_dsn = TRUE)
 
 # Load geospatial data already filtered to parameters of interest (needed to be small enough for GitHub)
-hydrolakes.us = st_read('data/LakeATLAS_CONUS.shp')
+hydrolakes.us = st_read('data/LakeATLAS_all/LakeATLAS_CONUS.shp')
 
 #rdd_mk_uav in meters per km², road density in total watershed upstream of lake pour point
 #pre_mm_uyr precipitation in total watershed upstream of lake pour point annual average
 #aet_mm_uyr actual evapotranspiration in total watershed upstream of lake pour point annual average
 
 
-# Get USGS road salt data from 2015
-r = read_stars('data/USGSsalt/2015.tif') 
-# Transform points to have compatible projection
-a.project = hydrolakes.us |>
-  st_transform(st_crs(r))
-# Extract raster data
-usgsExtract = st_extract(r, a.project) |> 
-  mutate(salt_kg_m2 = `2015.tif` * 0.453592 / 1e6) # conversion from pounds per km2 to kg per m2
+library(raster)
+# r0 = raster('data/USGSsalt/1992_2015/2010.tif') 
+# r1 = raster('data/USGSsalt/1992_2015/2011.tif') 
+# r2 = raster('data/USGSsalt/1992_2015/2012.tif') 
+# r3 = raster('data/USGSsalt/1992_2015/2013.tif') 
+# r4 = raster('data/USGSsalt/1992_2015/2014.tif') 
+# r5 = raster('data/USGSsalt/1992_2015/2015.tif') 
+# stacked <- stack(r0, r1, r2, r3, r4, r5) # make a raster stack
+# # calculate a mean raster
+# meanR <- calc(stacked, fun = mean)
+# writeRaster(meanR, 'data/USGSsalt/mean2010_2015.tif')
 
+# Get USGS road salt data mean from 2010-2015
+r = raster('data/USGSsalt/mean2010_2015.tif')
+
+
+# Load HYDROsheds level 12 shapefiles
+level12 = st_read('~/Documents/HydroAtlas/hybas_na_lev01-12_v1c/hybas_na_lev12_v1c.shp') |> 
+  filter(HYBAS_ID %in% hydrolakes.us$HYBAS_L12)
+
+level12.valid = level12 %>%
+    st_make_valid(.) |> 
+    st_transform(st_crs(r))
+
+# Extract raster data and take mean (this step takes a while, load csv to save time)
+# saltExtract = raster::extract(r, level12.valid)
+# saltExtract.mean = lapply(saltExtract,mean) %>%
+#   do.call(rbind.data.frame, .) |> 
+#   rename(mean.salt = 1) |> 
+#   mutate(HYBAS_ID = level12.valid$HYBAS_ID)
+# write_csv(saltExtract.mean, file = 'data/saltExtractMean.csv')
+saltExtract.mean = read_csv('data/saltExtractMean.csv')
 
 # Convert units and add salt 
-b = hydrolakes.us |>
-  mutate(salt_kg_m2 = usgsExtract$salt_kg_m2) |> 
-  mutate(cl_kg_m2 = salt_kg_m2* 0.6067) |> 
+b = hydrolakes.us |> 
+  left_join(saltExtract.mean,  by = c('HYBAS_L12' = 'HYBAS_ID')) |> 
+  mutate(cl_kg_m2 = mean.salt * 0.6067 * 0.453592 / 1e6 ) |>  # convert from pounds salt per km2 to kg Cl- per m2
   mutate(delta = rdd_mk_uav/1e6) |> # convert to meters per m2
   mutate(p = (pre_mm_uyr - aet_mm_uyr)/1000) #Precipitation (net of evapotranspiration), m y-1
 
 # Check ranges
-range(b$salt_kg_m2)
+range(b$cl_kg_m2, na.rm = TRUE)
 range(b$delta)
 range(b$p)
 
 #Application rate of road salt, kg (lane-m)-1 y-1
 #Use range 2.5 to 25 kg (lane-m)-1 y-1
 alpha <- c(2.5,5,10,15,20,25)#c(0:12)
-
 
 # Just a helpful stackoverflow function to make case_when into factors 
 # https://stackoverflow.com/questions/49572416/r-convert-to-factor-with-order-of-levels-same-with-case-when
@@ -87,18 +107,15 @@ ggplot(b) +
 
 # What state are all the points in? 
 states_sf <- st_transform(us_states(map_date = NULL, resolution = c("low", "high"), states = NULL), 4326) |> 
-  select(name, state_name, state_abbr)
+  dplyr::select(name, state_name, state_abbr)
 b.state <- as.data.frame(st_join(b, states_sf, join = st_intersects))
 b.state.sf <- st_join(b, states_sf, join = st_intersects)
-# st_write(b.state.sf, dsn = 'data/saltModeloutput.GeoJSON')
+# st_write(b.state.sf, dsn = 'data/saltModeloutput.GeoJSON', delete_dsn = TRUE)
 
-# Check on state total salt use
-wi = st_union(states_sf |> filter(name == 'Wisconsin') |> st_transform(st_crs(r)))
-wiTotalsalt = st_crop(r, wi)
-# Extract average value per polygon
-aggregate(r, wi, mean, na.rm=TRUE)
-
-
+# Check highest concentrations in lakes/states
+b.state.sf |> filter(CL == max(CL))
+b.state.sf |> filter(state_abbr == 'IL') |> dplyr::select(Hylak_id, CL, CL.group) |> 
+        arrange(desc(CL))
 
 ############# ############## MAPPING ############## ##############
 ## Esri basemap URLs ####
@@ -107,32 +124,26 @@ world_gray <-  paste0('https://services.arcgisonline.com/arcgis/rest/services/Ca
 m1 = ggplot() +
   annotation_map_tile(type = world_gray, zoom = 5) + # Esri Basemap
   geom_sf(data = b, aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
-  scale_fill_manual(values = rev(met.brewer("Peru1", 6)), 
+  scale_fill_manual(values = rev(met.brewer("Peru1", 6)[-4]), 
                     name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-")))) +
-  # coord_sf(label_graticule = "-NE") +
   theme_bw(base_size = 9) +
   theme(axis.title = element_blank(),
         legend.position = c(0.9,0.2),
         legend.background = element_blank(),
-        # legend.box.background = element_blank(),
         legend.title = element_text(size = 7),
         legend.key = element_blank(),
         legend.key.height = unit(0.1,'cm'))
-m1
-
-
 
 m2 = ggplot() +
   annotation_map_tile(type = world_gray, zoom = 8) + # Esri Basemap
   geom_sf(data = b, aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
-  scale_fill_manual(values = rev(met.brewer("Peru1", 6)), 
+  scale_fill_manual(values = rev(met.brewer("Peru1", 6)[-4]), 
                     name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-")))) +
   theme_bw(base_size = 9) +
   coord_sf(crs = 4326, ylim = c(41.5,46), xlim = c(-89, -82)) +
   scale_x_continuous(breaks = seq(-88, -82, by = 2)) +
   theme(legend.position = 'none',
         legend.background = element_blank(),
-        # legend.box.background = element_blank(),
         legend.key = element_blank(),
         legend.key.height = unit(0.1,'cm'))
 
@@ -148,12 +159,11 @@ b.state.sum = b.state |>
   mutate(n = n()) |> 
   summarise(cl.230 = sum(cl230), cl.120 = sum(cl120), n = first(n)) |> 
   mutate(prop.120 = round(cl.120/n,2), prop.230 = round(cl.230/n,2)) |> 
-  # mutate(cl.230.per = cl.230/n) |> 
   filter(!is.na(state_name)) |> 
-  filter(cl.120 >= 20) |> # filter to states with more than 20 lakes
+  filter(cl.120 >= 5) |> # filter to states with more than 5 lakes
   pivot_longer(cols = cl.230:cl.120) |> 
   arrange(desc(prop.230), name) |> 
-  mutate(state_name = factor(state_name, levels = unique(b.state.sum$state_name)))
+  mutate(state_name = factor(state_name, levels = unique(state_name)))
 
 
 p1 = ggplot(b.state.sum) +
@@ -163,8 +173,8 @@ p1 = ggplot(b.state.sum) +
   geom_text(data = b.state.sum |> filter(name == 'cl.230'), 
             aes(x= state_name, y = value, label=prop.230), vjust= -0.5, size = 2) +
   ylab("No. lakes > chloride threshold") +
-  ylim(0,500) + 
-  scale_fill_manual(values = c('#e35e28', '#1c9d7c'), 
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
+  scale_fill_manual(values = c( '#e35e28', '#b5361c'), 
                     labels = c('120 mg/L','230 mg/L'), name = 'Threshold') +
   theme_bw(base_size = 9) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
@@ -180,12 +190,6 @@ AA
 AA
 BC
 '
-
-# layout <- c(
-# area(t = 1, l = 1, b = 3, r = 6),
-# area(t = 4, l = 1, b = 5, r = 2),
-# area(t = 4, l = 3, b = 5, r = 6))
-
 plotjoin = m1 + p1 + m2 +
   plot_layout(design = layout) +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') &
@@ -198,14 +202,15 @@ ggsave(plot = plotjoin, filename = 'figures/Figure3.png',
 ############# ############## Map salt use ############## ##############
 #Plot salt use, does it makes sense?
 test <- b.state.sf %>%
-  mutate(salt_kg_m2.group = case_when(salt_kg_m2 < 0.005 ~ '0-0.005',
-                                      salt_kg_m2 < 0.01 ~ '0.005-0.01',
-                                      salt_kg_m2 < 0.02 ~ '0.01-0.02',
-                                      salt_kg_m2 < 0.03 ~ '0.02-0.03',
-                                      salt_kg_m2 < 0.05 ~ '0.03-0.05',
-                                      salt_kg_m2 >= 0.05 ~ '0.05+'))
+  mutate(cl_kg_m2.group = case_when(cl_kg_m2 < 0.005 ~ '0-0.005',
+                              cl_kg_m2 < cl_kg_m2 ~ '0.005-0.01',
+                              cl_kg_m2 < 0.02 ~ '0.01-0.02',
+                              cl_kg_m2 < 0.03 ~ '0.02-0.03',
+                              cl_kg_m2 < 0.05 ~ '0.03-0.05',
+                              cl_kg_m2 >= 0.05 ~ '0.05+'))
 
-test |> group_by(state_abbr) |> summarise(saltuse = mean(salt_kg_m2)) |> arrange(desc(saltuse))
+test |> group_by(state_abbr) |> summarise(saltuse = mean(cl_kg_m2, na.rm = T)) |> 
+  arrange(desc(saltuse)) |> arrange(desc(saltuse))
 
 # ggplot() +
 #   annotation_map_tile(type = world_gray, zoom = 5) + # Esri Basemap
