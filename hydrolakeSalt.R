@@ -42,6 +42,8 @@ library(raster)
 # Get USGS road salt data mean from 2010-2015
 r = raster('data/USGSsalt/mean2010_2015.tif')
 
+# Convert from lbs to US tons. Total salt use 21 Million tons
+cellStats(r, stat = 'sum') * 0.0005
 
 # Load HYDROsheds level 12 shapefiles
 level12 = st_read('~/Documents/HydroAtlas/hybas_na_lev01-12_v1c/hybas_na_lev12_v1c.shp') |> 
