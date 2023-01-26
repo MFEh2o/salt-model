@@ -251,58 +251,6 @@ legend('topleft',legend=c('Fast flowpaths, increasing application','Fast flowpat
 dev.off()
 
 
-####################################################################################
-  ########## Scenario of decreasing alpha from 8 to 0,2,4 after 60 years #########
-####################################################################################
-times = 1:200
-inits = c(SW=0,SL=0)
-pars <- c(phi = 0.1, alpha = 8, delta = 0.010, A = 1e6, p = 0.25, V = 50000)
-#Solve through time
-ss.8 <- ode(inits,times,dSalt,pars) |> 
-  as.tibble() |> mutate_all(list(as.numeric)) |> 
-  mutate(scenario = 'alpha = 8')
-
-#Solve through time
-times = 60:200
-inits = c(SW = ss.8[60,]$SW, SL = ss.8[60,]$SL)
-
-#Decrease alpha to 4
-pars <- c(phi = 0.1, alpha = 4, delta = 0.010, A = 1e6, p = 0.25, V = 50000)
-ss.4 = ode(inits,times,dSalt,pars) |> 
-  as.tibble() |> mutate_all(list(as.numeric)) |> 
-  mutate(scenario = 'alpha = 4')
-#Decrease alpha to 2
-pars <- c(phi = 0.1, alpha = 2, delta = 0.010, A = 1e6, p = 0.25, V = 50000)
-ss.2 = ode(inits,times,dSalt,pars) |> 
-  as.tibble() |> mutate_all(list(as.numeric)) |> 
-  mutate(scenario = 'alpha = 2')
-#Decrease alpha to 0
-pars <- c(phi = 0.1, alpha = 0, delta = 0.010, A = 1e6, p = 0.25, V = 50000)
-ss.0 = ode(inits,times,dSalt,pars) |> 
-  as.tibble() |> mutate_all(list(as.numeric)) |> 
-  mutate(scenario = 'alpha = 0')
-
-# Join scenarios
-ss.out = ss.8 |> bind_rows(ss.4) |> bind_rows(ss.2) |> bind_rows(ss.0) |> 
-  mutate(CL = SL/V*1000)
-
-# Plot and save scenarios
-ggplot(ss.out) +
-  geom_path(aes(x = time, y = CL, group = scenario, color = scenario), linetype = 1, linewidth = 1) +
-  scale_color_manual(values = (met.brewer("Tam", 4))) +
-  ylab("Road Salt Concentration"~(mg~Cl^"-"~L^-1)) +
-  xlab('Year') +
-  theme_bw(base_size = 9) +
-  theme(legend.position = c(0.15,0.87),
-        legend.title = element_blank(),
-        legend.key.size = unit(0.3, 'cm'),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank()
-        )
-
-ggsave('figures/Figure1b.png', width = 3, height = 3, dpi = 500)
-
-
 #---- Model Application 2: Calculate equilibrium salt concentration across parameter ranges ----
 
 #This uses the analytical solution to the model given in dSalt.r
