@@ -431,6 +431,7 @@ m1 = ggplot() +
   geom_sf(data = join.df.sf |> filter(!is.na(CL)), aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
   scale_fill_manual(values = rev(met.brewer("Peru1", 7)[-4]), 
                     name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-")))) +
+  guides(fill=guide_legend(override.aes=list(size=3))) +
   theme_bw(base_size = 9) +
   theme(axis.title = element_blank(),
         legend.position = c(0.9,0.2),
@@ -494,9 +495,9 @@ p1 = ggplot(b.state.sum) +
 layout <- '
 AA
 AA
-BC
+BB
 '
-plotjoin = m1 + p1 + m2 +
+plotjoin = m1 + p1 +
   plot_layout(design = layout) +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') &
   theme(plot.tag = element_text(size  = 8))
