@@ -505,3 +505,38 @@ plotjoin = m1 + p1 +
 ggsave(plot = plotjoin, filename = 'figures/Figure3.png', 
        width = 6, height = 6, dpi = 500, bg = 'white')
 
+
+
+#### Pull out Fig. 3B data a little differently
+
+#Total number of lakes in each state
+nLakes <- b.state %>%
+  group_by(state_name) %>%
+  summarize(nLakes=n())
+nLakes
+
+#Number of lakes that exceed 230 mg/L threshold
+n230 <- b.state %>%
+  filter(CL>= 230) %>%
+  group_by(state_name) %>%
+  summarize(n230=n())
+
+#Number of lakes that exceed 120 mg/L threshold
+n120 <- b.state %>%
+  filter(CL>= 120) %>%
+  group_by(state_name) %>%
+  summarize(n120=n())
+
+#Join
+nLakes <- left_join(nLakes,n230,by='state_name')
+nLakes <- left_join(nLakes,n120,by='state_name')
+
+#Calculate proportions and sort by proportion > 230 mg/L threshold
+nLakes <- nLakes %>%
+  mutate(p230=n230/nLakes,p120=n120/nLakes) %>%
+  arrange(desc(p230))
+
+print(nLakes,n=Inf)
+
+#How many lakes are predicted to exceed the 120 mg/L threshold?
+sum(nLakes$n120,na.rm=T)
