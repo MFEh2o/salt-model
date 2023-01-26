@@ -11,7 +11,7 @@ The 'road density.r' script uses US Census Bureau TIGER/Line data to calculate r
 
 
 ## Application 3
-Predict the equilibrium road salt concentration for all lakes larger than 1 ha in the contiguous United States.
+Predict the equilibrium road salt concentration for all lakes larger than 1 ha in the contiguous United States. Model results can be found in data/Application3_ModelResults.zip
 
 Watershed (n = 477,965), networked watersheds (n = 25,531), and lake data (in data/LAGOS) were obtained from LAGOS locus (Cheruvelil et al. 2021). 
 See https://lagoslakes.org/lagos-us-overview/
