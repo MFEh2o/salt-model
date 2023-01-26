@@ -322,7 +322,7 @@ g2 <- ggplot(filter(dOut,delta>0)) +
   facet_grid(cols=vars(precipRegime)) +
   labs(x=expression(Road~density~'('*'lane-m'~m^-2*')'),
        y=expression(Equilibrium~salt~concentration~'('*mg~Cl-~L^-1*')'),
-       color=expression(atop(Road~salt~application~rate,'('*kg~'('*'lane-m'*')'^-1~y^-1*')'))) +
+       color=expression(atop(Road~salt~application~rate,'('*kg~Cl-~'('*'lane-m'*')'^-1~y^-1*')'))) +
   theme_bw() +
   theme(legend.position=c(0.85,0.75),
         legend.background=element_rect(fill='transparent'),
