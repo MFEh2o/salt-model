@@ -11,6 +11,7 @@ library(MetBrewer)
 library(raster)
 library(patchwork)
 library(USAboundaries)
+library(feather)
 
 source('dSalt.r')
 source('dSaltForce.r')
@@ -370,12 +371,13 @@ out.ws = read_csv('data/saltExtractMean_LAGOSws.csv') |>
   bind_rows(out.nws) |> 
   dplyr::select(!nws_zoneid) 
 
-# Load LAGOS lake information
-lagos.info = read_csv('data/LAGOS/lake_information.csv') |> 
-  dplyr::select(lagoslakeid, lake_namegnis, lake_namelagos, lake_lat_decdeg, 
-                lake_lon_decdeg, lake_states, ws_zoneid, nws_zoneid)
+# Load LAGOS lake information csv to bit for GitHub. Pared down and saved as feather. 
+# lagos.info = read_csv('data/LAGOS/lake_information.csv') |> 
+#   dplyr::select(lagoslakeid, lake_namegnis, lake_namelagos, lake_lat_decdeg, 
+#                 lake_lon_decdeg, lake_states, ws_zoneid, nws_zoneid)
+# write_feather(lagos.info, 'data/LAGOS/lake_info.feather')
 
-
+lagos.info = read_feather('data/LAGOS/lake_info.feather')
 
 # Load AET data, previously extracted from HydroBASIN matchup
 aet.hb = read_csv('data/aetExtract_HydroBASIN.csv') %>% 

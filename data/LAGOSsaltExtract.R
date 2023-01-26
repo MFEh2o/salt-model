@@ -9,7 +9,6 @@ library(raster)
 
 # Get USGS road salt data mean from 2010-2015
 r = raster('data/USGSsalt/mean2010_2015.tif')
-r = raster('data/USGSsalt/1992_2015/2015.tif')
 sum(values(r), na.rm = T)* 0.0005
 
 
