@@ -346,7 +346,7 @@ grid.arrange(g2,g1,nrow=1,widths=c(3,1))
 dev.off()
 
 
-#---- Model Application 3: Spatially-explicit predictions of equilibrium road salt concentration ----
+##### ---- Model Application 3: Spatially-explicit predictions of equilibrium road salt concentration ----
 
 # Just a helpful stackoverflow function to make case_when into factors 
 # https://stackoverflow.com/questions/49572416/r-convert-to-factor-with-order-of-levels-same-with-case-when
@@ -429,12 +429,12 @@ world_gray <-  paste0('https://services.arcgisonline.com/arcgis/rest/services/Ca
 m1 = ggplot() +
   annotation_map_tile(type = world_gray, zoom = 5) + # Esri Basemap
   geom_sf(data = join.df.sf |> filter(!is.na(CL)), aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
-  scale_fill_manual(values = rev(met.brewer("Peru1", 7)[-4]), 
-                    name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-")))) +
+  scale_fill_manual(values = rev(met.brewer("Peru1", 7)[-4]), name = expression("Road Salt"~(mg~Cl^"-"~L^"-1"))) +
+                    # name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-")))) +
   guides(fill=guide_legend(override.aes=list(size=3))) +
   theme_bw(base_size = 9) +
   theme(axis.title = element_blank(),
-        legend.position = c(0.9,0.2),
+        legend.position = c(0.90,0.2),
         legend.background = element_blank(),
         legend.title = element_text(size = 7),
         legend.key = element_blank(),
@@ -444,10 +444,10 @@ m2 = ggplot() +
   annotation_map_tile(type = world_gray, zoom = 8) + # Esri Basemap
   geom_sf(data = join.df.sf |> filter(!is.na(CL)), aes(fill = CL.group), size = 1, stroke = 0.2, shape = 21) +
   scale_fill_manual(values = rev(met.brewer("Peru1", 7)[-4]), 
-                    name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-")))) +
+                    name = expression(atop("Road Salt",~(mg~Cl^"-"~L^"-1")))) +
   theme_bw(base_size = 9) +
   coord_sf(crs = 4326, ylim = c(41.5,46), xlim = c(-89, -82)) +
-  scale_x_continuous(breaks = seq(-88, -82, by = 2)) +
+  scale_x_continuous(breaks = seq(-90, -82, by = 2)) +
   theme(legend.position = 'none',
         legend.background = element_blank(),
         legend.key = element_blank(),
@@ -464,7 +464,7 @@ b.state.sum = b.state |>
   summarise(cl.230 = sum(cl230), cl.120 = sum(cl120), n = first(n)) |> 
   mutate(prop.120 = round(cl.120/n,2), prop.230 = round(cl.230/n,2)) |> 
   filter(!is.na(state_name)) |> 
-  filter(cl.120 >= 40) |> # filter to states with more than 5 lakes
+  filter(cl.120 >= 25) |> # filter to states with more than X lakes
   pivot_longer(cols = cl.230:cl.120) |> 
   arrange(desc(prop.230), name) 
 
@@ -477,11 +477,11 @@ p1 = ggplot(b.state.sum) +
   geom_col(aes(x= state_name, y = value, fill = name), width = 0.8, position = 'identity') +
   geom_text(data = b.state.sum |> filter(name == 'cl.120'), 
             aes(x= state_name, y = value, label=prop.120), vjust= -0.5, size = 2) +
-  geom_text(data = b.state.sum |> filter(name == 'cl.230'), 
+  geom_text(data = b.state.sum |> filter(name == 'cl.230') |> filter(prop.230 > 0), 
             aes(x= state_name, y = value, label=prop.230), vjust= -0.5, size = 2) +
   ylab("No. lakes > chloride threshold") +
   scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + 
-  scale_fill_manual(values = c( '#e35e28', '#b5361c'), 
+  scale_fill_manual(values = c( '#5E885F', '#DB5726'), 
                     labels = c('120 mg/L','230 mg/L'), name = 'Threshold') +
   theme_bw(base_size = 9) +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
