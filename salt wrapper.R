@@ -12,6 +12,7 @@ library(raster)
 library(patchwork)
 library(USAboundaries)
 library(feather)
+library(RColorBrewer)
 
 source('dSalt.r')
 source('dSaltForce.r')
@@ -314,7 +315,11 @@ dOut <- dOut %>%
 
 #Create a factor version of alpha, with lowest level of factor the highest value of alpha,
 #for convenience in plotting
-dOut$alphaFac <- factor(dOut$alpha,levels=sort(unique(dOut$alpha),decreasing=TRUE))
+dOut$alphaFac <- factor(dOut$alpha,levels=sort(unique(dOut$alpha),decreasing=FALSE))
+
+#Create a color palette, omitting very light colors
+length(unique(dOut$alpha))
+redPal <- brewer.pal(n=8,'Reds')[3:8]
 
 #Create plot
 g2 <- ggplot(filter(dOut,delta>0)) +
@@ -331,7 +336,8 @@ g2 <- ggplot(filter(dOut,delta>0)) +
         legend.title = element_text(size=10)) +
   scale_y_log10(minor_breaks=c(seq(0.3,0.9,0.1),seq(2,9,1),seq(20,90,10),seq(200,900,100),seq(2000,9000,1000))) +
   scale_x_log10(labels=scales::number_format(accuracy = 0.0001)) +
-  scale_color_brewer(type='seq',palette='Reds')
+  scale_color_manual(values=redPal,guide=guide_legend(reverse=TRUE))
+
 
 #Check plot
 g2
