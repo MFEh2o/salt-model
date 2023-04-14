@@ -136,7 +136,7 @@ jpeg(filename='chloride Mirror Lake outlet 1967-2021.jpeg',width=3.5,height=3.5,
 #Plot
 ggplot() +
   geom_point(data=filter(dt1,year(date)<2008),mapping=aes(x=date,y=Cl),col=1) +
-  geom_point(data=filter(dt1,year(date)>=2008),mapping=aes(x=date,y=Cl),col=2)
+  geom_point(data=filter(dt1,year(date)>=2008),mapping=aes(x=date,y=Cl),col=2) +
   labs(x=NULL,y=expression(Cl^'-'~'('~mg~L^-1~')')) +
   theme_bw()
 
