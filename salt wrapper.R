@@ -242,7 +242,7 @@ sOut <- sOut %>%
          CL3=SL3/V*1000)
 
 #Open graphics device
-jpeg('figures/Figure 1.jpg',width=4,height=4,units='in',res=300)
+jpeg('figures/Figure 1.jpg',width=4,height=4,units='in',res=500)
 
 #Plot
 plot(CL3~year,data=sOut,type='l',lty=3,xlab='year',ylab=expression(Salt~concentration~'('*mg~Cl-~L^-1*')'))
