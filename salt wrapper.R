@@ -14,8 +14,8 @@ library(USAboundaries)
 library(feather)
 library(RColorBrewer)
 
-source('dSalt.r')
-source('dSaltForce.r')
+source('6_Functions/dSalt.r')
+source('6_Functions/dSaltForce.r')
 
 
 #---- Road density ----
@@ -242,7 +242,7 @@ sOut <- sOut %>%
          CL3=SL3/V*1000)
 
 #Open graphics device
-jpeg('figures/Figure 1.jpg',width=4,height=4,units='in',res=500)
+jpeg('7_ManuscriptFigures/Figure 1.jpg',width=4,height=4,units='in',res=500)
 
 #Plot
 plot(CL3~year,data=sOut,type='l',lty=3,xlab='year',ylab=expression(Salt~concentration~'('*mg~Cl-~L^-1*')'))
@@ -344,7 +344,7 @@ g2 <- ggplot(filter(dOut,delta>0)) +
 g2
 
 #Open graphics device
-jpeg('figures/Figure 2.jpg',width=8.88,height=4,units='in',res=500)
+jpeg('7_ManuscriptFigures/Figure 2.jpg',width=8.88,height=4,units='in',res=500)
 
 #Put g2 and g1 on same figure
 grid.arrange(g2,g1,nrow=1,widths=c(3,1))
@@ -508,7 +508,7 @@ plotjoin = m1 + p1 +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') &
   theme(plot.tag = element_text(size  = 8))
 
-ggsave(plot = plotjoin, filename = 'figures/Figure3.png', 
+ggsave(plot = plotjoin, filename = '7_ManuscriptFigures/Figure3.png', 
        width = 6, height = 6, dpi = 500, bg = 'white')
 
 
