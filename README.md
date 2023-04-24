@@ -1,6 +1,8 @@
 # salt-model
 simple salt model
 
+[![DOI](https://zenodo.org/badge/578657567.svg)](https://zenodo.org/badge/latestdoi/578657567)
+
 This repo contains code and data related to a simple differential equation model of salt concentrations in lakes and their watersheds.
 
 The main script is 'salt wrapper.r'. Mostly this wrapper script works with the anlyitcal equilibrium solutions of the model, but it also calls 'dSalt.r', which defines the differential equations, to do some dynamic simulations.
