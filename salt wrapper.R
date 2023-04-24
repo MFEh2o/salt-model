@@ -96,10 +96,10 @@ conusStates <- state.abb[-which(state.abb%in%c('AK','HI'))]
 # }
 # 
 # #Save the dDens object to permit skipping those (time-consuming) calculations in a subsequent session
-# save(dDens,file='data outputs/dDens.RData')
+# save(dDens,file='3_DerivedData/dDens.RData')
 
 #If proceeding from previously saved file, skip the for-loop above and use:
-load('data outputs/dDens.RData')
+load('3_DerivedData/dDens.RData')
 
 #Histogram of road density
 hist(dDens$roadDensity,main="",xlab=expression(Road~density~'('*lane*'-'*m~m^-2*')'))
@@ -135,6 +135,7 @@ g1 <- ggplot(dDens) +
                 minor_breaks=c(seq(0.0002,0.0009,0.0001),seq(0.002,0.009,0.001),0.02,0.03),
                 labels=scales::number_format(accuracy = 0.0001)) +
   labs(x=expression(Road~density~'('*'lane-m'~m^-2*')'),y='Number of counties') +
+  annotate(geom = 'text', label = 'd)', x = 0.0002, y = 530, hjust = 0, vjust = 0, size = 3) +
   theme_bw()
 g1
 
@@ -241,7 +242,7 @@ sOut <- sOut %>%
          CL3=SL3/V*1000)
 
 #Open graphics device
-jpeg('figures/Figure 1.jpg',width=4,height=4,units='in',res=300)
+jpeg('figures/Figure 1.jpg',width=4,height=4,units='in',res=500)
 
 #Plot
 plot(CL3~year,data=sOut,type='l',lty=3,xlab='year',ylab=expression(Salt~concentration~'('*mg~Cl-~L^-1*')'))
@@ -302,9 +303,9 @@ dOut <- expand.grid(alpha=alpha,delta=delta,p=p)
 
 #Add a column naming the levels of p as dry, mesic, wet
 dOut$precipRegime <- character(length=dim(dOut)[1])
-dOut$precipRegime[dOut$p==0.05] <- 'dry'
-dOut$precipRegime[dOut$p==0.25] <- 'mesic'
-dOut$precipRegime[dOut$p==0.50] <- 'wet'
+dOut$precipRegime[dOut$p==0.05] <- 'a) dry'
+dOut$precipRegime[dOut$p==0.25] <- 'b) mesic'
+dOut$precipRegime[dOut$p==0.50] <- 'c) wet'
 
 #Calculate equilibrium concentration of salt in lake (g m-3 = mg L-1)
 dOut <- dOut %>%
@@ -343,7 +344,7 @@ g2 <- ggplot(filter(dOut,delta>0)) +
 g2
 
 #Open graphics device
-jpeg('figures/Figure 2.jpg',width=8.88,height=4,units='in',res=300)
+jpeg('figures/Figure 2.jpg',width=8.88,height=4,units='in',res=500)
 
 #Put g2 and g1 on same figure
 grid.arrange(g2,g1,nrow=1,widths=c(3,1))
@@ -364,29 +365,27 @@ fct_case_when <- function(...) {
 }
 
 # Load salt data that was extract from the FALCONE dataset using LAGOS polygon overlays
+# See script: 2_DataProcessing/LAGOSsaltExtract.R
 # Networked watersheds
-out.nws = read_csv('data/saltExtractMean_LAGOSnws.csv') |> 
+out.nws = read_csv('3_DerivedData/saltExtractMean_LAGOSnws.csv') |> 
   mutate(cl_kg_m2 = salt * 0.6067 * 0.453592 / 1e6 ) |> 
   mutate(spatial_division = 'nws')# convert from pounds salt per km2 to kg Cl- per m2
 
 # Watersheds
-out.ws = read_csv('data/saltExtractMean_LAGOSws.csv') |> 
+out.ws = read_csv('3_DerivedData/saltExtractMean_LAGOSws.csv') |> 
   mutate(cl_kg_m2 = salt * 0.6067 * 0.453592 / 1e6 )  |> # convert from pounds salt per km2 to kg Cl- per m2
   mutate(spatial_division = 'ws') |> 
   filter(!lagoslakeid %in% out.nws$lagoslakeid) |> 
   bind_rows(out.nws) |> 
   dplyr::select(!nws_zoneid) 
 
-# Load LAGOS lake information csv to bit for GitHub. Pared down and saved as feather. 
-# lagos.info = read_csv('data/LAGOS/lake_information.csv') |> 
-#   dplyr::select(lagoslakeid, lake_namegnis, lake_namelagos, lake_lat_decdeg, 
-#                 lake_lon_decdeg, lake_states, ws_zoneid, nws_zoneid)
-# write_feather(lagos.info, 'data/LAGOS/lake_info.feather')
-
-lagos.info = read_feather('data/LAGOS/lake_info.feather')
+# Load LAGOS lake information. 
+# See script: 2_DataProcessing/ExtractLAGOSinformation.R
+lagos.info = read_feather('3_DerivedData/LAGOS_lake_information.feather')
 
 # Load AET data, previously extracted from HydroBASIN matchup
-aet.hb = read_csv('data/aetExtract_HydroBASIN.csv') %>% 
+# See script: 2_DataProcessing/HydroBASIN_aetExtract.R
+aet.hb = read_csv('3_DerivedData/aetExtract_HydroBASIN.csv') %>% 
   dplyr::select(lagoslakeid, pre_mm_uyr:rdd_mk_uav)
 #rdd_mk_uav in meters per km², road density in total watershed upstream of lake pour point
 #pre_mm_uyr precipitation in total watershed upstream of lake pour point annual average
@@ -409,7 +408,8 @@ b <- join.df %>%
                                   CL < 230 ~ '120-230',
                                   CL < 500 ~ '230-500',
                                   CL >= 500 ~ '500+')) |> 
-  filter(!is.na(CL))
+  filter(!is.na(CL)) |> 
+  arrange(CL.group)
 
 ############# Create spatial data #############
 # Convert data frame to sf object
@@ -423,10 +423,10 @@ states_sf <- st_transform(us_states(map_date = NULL, resolution = c("low", "high
   dplyr::select(name, state_name, state_abbr)
 
 b.state <- as.data.frame(st_join(join.df.sf, states_sf, join = st_intersects))
-b.state.sf <- st_join(join.df.sf, states_sf, join = st_intersects)
 
-# Write model output for faster loading
-# st_write(b.state.sf, dsn = 'data/saltModeloutput_LAGOS.GeoJSON', delete_dsn = TRUE)
+# Write model output for faster loading (a compressed version of this is available in the repo)
+# b.state.sf <- st_join(join.df.sf, states_sf, join = st_intersects)
+# st_write(b.state.sf, dsn = '4_LAGOSModelOutput/saltModeloutput_LAGOS.shp', delete_dsn = TRUE)
 
 ############# ############## MAPPING ############## ##############
 ## Esri basemap URLs ####

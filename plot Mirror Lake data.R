@@ -131,7 +131,7 @@ ggplot(filter(dt1,year(date)<2008)) +
 #Plot for manuscript
 
 #First open jpg graphics device
-jpeg(filename='chloride Mirror Lake outlet 1967-2021.jpeg',width=3.5,height=3.5,units='in',res=300)
+jpeg(filename='chloride Mirror Lake outlet 1967-2021.jpeg',width=3.5,height=3.5,units='in',res=500)
 
 #Plot
 ggplot() +
